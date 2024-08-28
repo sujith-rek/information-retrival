@@ -16,6 +16,14 @@ UTF_8 = 'utf-8'
 READ = 'r'
 WRITE = 'w'
 DOCUMENT_PATH = '/corpus/'
+AND = 'and'
+OR = 'or'
+NOT = 'not'
+SPACE = ' '
+EMPTY = ''
+INPUT_MESSAGE = 'Enter the search query: '
+QUERY_SUCCESS_MESSAGE = 'Documents satisfying the query: '
+QUERY_FAILURE_MESSAGE = 'No documents satisfy the query'
 
 
 # Document Preprocessing Functions
@@ -27,18 +35,18 @@ def case_fold(string: str) -> str:
 def remove_stopwords(string: str) -> str:
     """Removes the stopwords from the string using NLTK's stopwords"""
     stop_words = set(stopwords.words('english'))
-    return ' '.join([word for word in string.split() if word not in stop_words])
+    return SPACE.join([word for word in string.split() if word not in stop_words])
 
 
 def remove_punctuation(string: str) -> str:
     """Removes the punctuation from the string"""
-    return ''.join([char for char in string if char.isalnum() or char.isspace()])
+    return EMPTY.join([char for char in string if char.isalnum() or char.isspace()])
 
 
 def expand_contractions(string: str) -> str:
     """Expands the contractions in the string"""
     contraction = get_contraction()
-    return ' '.join([contraction[word] if word in contraction else word for word in string.split()])
+    return SPACE.join([contraction[word] if word in contraction else word for word in string.split()])
 
 
 def stem_string(tokens: list) -> list:
@@ -140,7 +148,7 @@ def preprocess_query(query: str) -> list:
     """Preprocesses the query"""
     query = query.split()
     for i in range(len(query)):
-        if query[i].lower() not in ['and', 'or', 'not']:
+        if query[i].lower() not in [AND, OR, NOT]:
             query[i] = preprocess(query[i])[0]
     return query
 
@@ -148,7 +156,7 @@ def preprocess_query(query: str) -> list:
 def validate_query(query: list, inverted_index: dict) -> bool:
     """Validates the query by looking if word exists in the inverted index"""
     for i in range(len(query)):
-        if query[i].lower() not in ['and', 'or', 'not']:
+        if query[i].lower() not in [AND, OR, NOT]:
             if query[i] not in inverted_index:
                 return False
     return True
@@ -162,11 +170,11 @@ def search(query: str, inverted_index: dict) -> set:
         return set()
     result = set()
     for i, word in enumerate(query):
-        if word.lower() == 'and':
+        if word.lower() == AND:
             result = result.intersection(inverted_index[query[i + 1]])
-        elif word.lower() == 'or':
+        elif word.lower() == OR:
             result = result.union(inverted_index[query[i + 1]])
-        elif word.lower() == 'not':
+        elif word.lower() == NOT:
             result = result.difference(inverted_index[query[i + 1]])
         elif not result:
             result = inverted_index[word]
@@ -180,19 +188,19 @@ def search(query: str, inverted_index: dict) -> set:
 def get_document_name(index: int, files: list) -> str:
     """Returns the name of the document at the given index"""
     if index < 0 or index >= len(files):
-        return ''
+        return EMPTY
     return os.path.basename(files[index])
 
 
 def main():
     inverted_index, files = index_documents()
-    query = input('Enter the search query: ')
+    query = input(INPUT_MESSAGE)
     result = search(query, inverted_index)
     if not result:
-        print('No documents satisfy the query')
+        print(QUERY_FAILURE_MESSAGE)
         return
     else:
-        print('Documents satisfying the query:')
+        print(QUERY_SUCCESS_MESSAGE)
         for i in result:
             print(get_document_name(i, files))
 
