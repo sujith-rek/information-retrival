@@ -24,6 +24,10 @@ EMPTY = ''
 INPUT_MESSAGE = 'Enter the search query: '
 QUERY_SUCCESS_MESSAGE = 'Documents satisfying the query: '
 QUERY_FAILURE_MESSAGE = 'No documents satisfy the query'
+APHO_IS = "'s"
+IS = " is"
+APHO_CAUSE = "'cause"
+BECAUSE = " because"
 
 
 # Document Preprocessing Functions
@@ -46,6 +50,11 @@ def remove_punctuation(string: str) -> str:
 def expand_contractions(string: str) -> str:
     """Expands the contractions in the string"""
     contraction = get_contraction()
+    if APHO_IS in string:
+        string = string.replace(APHO_IS, IS)
+    if APHO_CAUSE in string:
+        string = string.replace(APHO_CAUSE, BECAUSE)
+
     return SPACE.join([contraction[word] if word in contraction else word for word in string.split()])
 
 
@@ -206,4 +215,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    while True:
+        main()
