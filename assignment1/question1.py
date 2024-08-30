@@ -15,7 +15,7 @@ INVERTED_INDEX_FILE = 'inverted_index.txt'
 UTF_8 = 'utf-8'
 READ = 'r'
 WRITE = 'w'
-DOCUMENT_PATH = '/corpus/'
+DOCUMENT_PATH = 'corpus/'
 AND = 'and'
 OR = 'or'
 NOT = 'not'
@@ -136,8 +136,7 @@ def reconstruct_inverted_index_from_index_file() -> dict:
 
 def index_documents() -> tuple:
     """Indexes the documents"""
-    dir_path = os.path.dirname(os.path.realpath(__file__)) + DOCUMENT_PATH
-    files = [dir_path + f for f in os.listdir(dir_path)]
+    files = [DOCUMENT_PATH + f for f in os.listdir(DOCUMENT_PATH)]
 
     if os.path.exists(INVERTED_INDEX_FILE):
         inverted_index = reconstruct_inverted_index_from_index_file()
