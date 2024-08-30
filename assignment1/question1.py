@@ -184,7 +184,7 @@ def search(query: str, inverted_index: dict) -> set:
             result = result.union(inverted_index[query[i + 1]])
         elif word.lower() == NOT:
             result = result.difference(inverted_index[query[i + 1]])
-        elif not result:
+        elif i == 0:
             result = inverted_index[word]
         else:
             pass

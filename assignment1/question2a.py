@@ -3,7 +3,7 @@ import os
 from assignment1.question1 import read_documents_as_strings, preprocess
 from assignment1.question1 import UTF_8, READ, WRITE, SPACE, DOCUMENT_PATH
 
-ORIGINAL_BI_WORD_INDEX_FILE = "original_bi_word_index.txt"
+BI_WORD_INDEX_FILE = "bi_word_index.txt"
 
 
 def read_dir(dir_path: str) -> list:
@@ -41,7 +41,7 @@ def index_bi_words_with_original() -> dict:
     processed_documents = process_original_documents()
     bi_word_index = create_bi_word_index(processed_documents)
 
-    bi_word_index_file = open(ORIGINAL_BI_WORD_INDEX_FILE, WRITE, encoding=UTF_8)
+    bi_word_index_file = open(BI_WORD_INDEX_FILE, WRITE, encoding=UTF_8)
     bi_word_index_file.write(str(bi_word_index))
     bi_word_index_file.close()
 
@@ -80,8 +80,8 @@ def main():
     """Main function"""
     original_bi_word_index = index_bi_words_with_original()
 
-    # if os.path.exists(ORIGINAL_BI_WORD_INDEX_FILE):
-    #     original_bi_word_index = reconstruct_bi_word_index_from_file(ORIGINAL_BI_WORD_INDEX_FILE)
+    # if os.path.exists(BI_WORD_INDEX_FILE):
+    #     original_bi_word_index = reconstruct_bi_word_index_from_file(BI_WORD_INDEX_FILE)
 
     query = input("Enter the bi-word query: ")
     original_result = search_bi_word_index(query, original_bi_word_index)
