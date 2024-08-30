@@ -107,6 +107,11 @@ def read_documents_as_strings(files: list) -> list:
     return [read_document_as_string(file) for file in files]
 
 
+def read_dir(dir_path: str) -> list:
+    """Reads the directory and returns the files in it"""
+    return read_documents_as_strings([dir_path + f for f in os.listdir(dir_path)])
+
+
 def create_inverted_index(documents: list) -> dict:
     """Creates the inverted index from the documents"""
     inverted_index = {}
@@ -119,36 +124,40 @@ def create_inverted_index(documents: list) -> dict:
     return dict(sorted(inverted_index.items()))
 
 
-def process_data(files: list) -> list:
+def process_documents(path: str) -> list:
     """Processes the data from the files"""
-    documents = read_documents_as_strings(files)
+    documents = read_dir(path)
     processed_documents = [preprocess(document) for document in documents]
     return processed_documents
 
 
-def reconstruct_inverted_index_from_index_file() -> dict:
-    """Reconstructs the inverted index from the index file"""
-    inv_index_file = open(INVERTED_INDEX_FILE, READ, encoding=UTF_8)
-    inverted_index = eval(inv_index_file.read())
-    inv_index_file.close()
-    return inverted_index
+def write_index_to_file(index: dict, file: str):
+    """Writes the index to the file"""
+    index_file = open(file, WRITE, encoding=UTF_8)
+    index_file.write(str(index))
+    index_file.close()
 
 
-def index_documents() -> tuple:
+def reconstruct_index_from_file(file: str) -> dict:
+    """Reconstructs the bi-word index from the file"""
+    index_file = open(file, READ, encoding=UTF_8)
+    index = eval(index_file.read())
+    index_file.close()
+    return index
+
+
+def index_documents() -> dict:
     """Indexes the documents"""
-    files = [DOCUMENT_PATH + f for f in os.listdir(DOCUMENT_PATH)]
 
     if os.path.exists(INVERTED_INDEX_FILE):
-        inverted_index = reconstruct_inverted_index_from_index_file()
+        inverted_index = reconstruct_index_from_file(INVERTED_INDEX_FILE)
     else:
-        processed_documents = process_data(files)
+        processed_documents = process_documents(DOCUMENT_PATH)
         inverted_index = create_inverted_index(processed_documents)
 
-        inv_index_file = open(INVERTED_INDEX_FILE, WRITE, encoding=UTF_8)
-        inv_index_file.write(str(inverted_index))
-        inv_index_file.close()
+        write_index_to_file(inverted_index, INVERTED_INDEX_FILE)
 
-    return inverted_index, files
+    return inverted_index
 
 
 # Query Processing Functions
@@ -192,16 +201,15 @@ def search(query: str, inverted_index: dict) -> set:
     return result
 
 
-# Utility Functions
-def get_document_name(index: int, files: list) -> str:
-    """Returns the name of the document at the given index"""
-    if index < 0 or index >= len(files):
-        return EMPTY
-    return os.path.basename(files[index])
+def get_documents_from_index(indices: set, directory: str):
+    """Prints the document names from the indices"""
+    files = os.listdir(directory)
+    for i in indices:
+        print(files[i])
 
 
 def main():
-    inverted_index, files = index_documents()
+    inverted_index = index_documents()
     query = input(INPUT_MESSAGE)
     result = search(query, inverted_index)
     if not result:
@@ -209,8 +217,7 @@ def main():
         return
     else:
         print(QUERY_SUCCESS_MESSAGE)
-        for i in result:
-            print(get_document_name(i, files))
+        get_documents_from_index(result, DOCUMENT_PATH)
 
 
 if __name__ == '__main__':
