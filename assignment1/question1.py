@@ -28,6 +28,17 @@ APHO_IS = "'s"
 IS = " is"
 APHO_CAUSE = "'cause"
 BECAUSE = " because"
+VOWELS_ZERO = 'AEIOUHWY'
+ZERO = '0'
+FOUR = 4
+PHONETIC_DICTIONARY = {
+    'B': '1', 'F': '1', 'P': '1', 'V': '1',
+    'C': '2', 'G': '2', 'J': '2', 'K': '2', 'Q': '2', 'S': '2', 'X': '2', 'Z': '2',
+    'D': '3', 'T': '3',
+    'L': '4',
+    'M': '5', 'N': '5',
+    'R': '6'
+}
 
 
 # Document Preprocessing Functions
@@ -180,21 +191,20 @@ def validate_query(query: list, inverted_index: dict) -> bool:
 
 
 # Search Functions
-def search(query: str, inverted_index: dict) -> set:
+def search(query: list, index: dict) -> set:
     """Searches the query in the inverted index"""
-    query = preprocess_query(query)
-    if not validate_query(query, inverted_index):
+    if not validate_query(query, index):
         return set()
     result = set()
     for i, word in enumerate(query):
         if word.lower() == AND:
-            result = result.intersection(inverted_index[query[i + 1]])
+            result = result.intersection(index[query[i + 1]])
         elif word.lower() == OR:
-            result = result.union(inverted_index[query[i + 1]])
+            result = result.union(index[query[i + 1]])
         elif word.lower() == NOT:
-            result = result.difference(inverted_index[query[i + 1]])
+            result = result.difference(index[query[i + 1]])
         elif i == 0:
-            result = inverted_index[word]
+            result = index[word]
         else:
             pass
 
@@ -211,7 +221,8 @@ def get_documents_from_index(indices: set, directory: str):
 def main():
     inverted_index = index_documents()
     query = input(INPUT_MESSAGE)
-    result = search(query, inverted_index)
+    processed_query = preprocess(query)
+    result = search(processed_query, inverted_index)
     if not result:
         print(QUERY_FAILURE_MESSAGE)
         return
