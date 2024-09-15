@@ -221,7 +221,7 @@ def get_documents_from_index(indices: set, directory: str):
 def main():
     inverted_index = index_documents()
     query = input(INPUT_MESSAGE)
-    processed_query = preprocess(query)
+    processed_query = preprocess_query(query)
     result = search(processed_query, inverted_index)
     if not result:
         print(QUERY_FAILURE_MESSAGE)
