@@ -37,6 +37,7 @@ EMPTY = ''
 READ = 'r'
 UTF_8 = 'utf-8'
 CORPUS = 'corpus/'
+INDEX_FILE = 'index.txt'
 
 
 def case_fold(string: str) -> str:
@@ -104,11 +105,52 @@ def read_document_as_tokens(file: str) -> list:
         return preprocess(f.read())
 
 
-def read_document_in_directory(directory: str) -> dict:
+def read_document_in_directory(directory: str):
     """Reads the documents in the directory and returns them as a dictionary"""
     documents = {}
+    doc_ids = {}
+    i = 0
     for file in os.listdir(directory):
         if file.endswith('.txt'):
+            doc_ids[i] = file
             file_path = os.path.join(directory, file)
-            documents[file] = read_document_as_tokens(file_path)
-    return documents
+            documents[i] = read_document_as_tokens(file_path)
+            i += 1
+    return documents, doc_ids
+
+
+def create_index_with_tf_df():
+    """Creates the inverted index from the documents"""
+    documents, d_ids = read_document_in_directory(CORPUS)
+    inverted_index = {}
+    for doc_id, document in documents.items():
+        for term in document:
+            if term not in inverted_index:
+                inverted_index[term] = {doc_id: 1}
+            elif doc_id not in inverted_index[term]:
+                inverted_index[term][doc_id] = 1
+            else:
+                inverted_index[term][doc_id] += 1
+
+    # Create the new dictionary with keys as tuples (term, df)
+    new_index = {}
+    for term, doc_dict in inverted_index.items():
+        df = len(doc_dict)
+        new_index[(term, df)] = doc_dict
+
+    return new_index, d_ids
+
+
+def write_index_to_file(index: dict, file: str):
+    """Writes the index to the file"""
+    index_file = open(file, 'w', encoding='utf-8')
+    index_file.write(str(index))
+    index_file.close()
+
+
+def reconstruct_index_from_file(file: str) -> dict:
+    """Reconstructs the bi-word index from the file"""
+    index_file = open(file, 'r', encoding='utf-8')
+    index = eval(index_file.read())
+    index_file.close()
+    return index
