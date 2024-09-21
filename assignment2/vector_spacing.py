@@ -26,3 +26,89 @@
 # documents need to be ordered by relevance, with the first document being most relevant. For
 # those with marked with the same relevance, further sort them by the increasing order of the
 # docIDs.
+
+import os
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+
+SPACE = ' '
+EMPTY = ''
+READ = 'r'
+UTF_8 = 'utf-8'
+CORPUS = 'corpus/'
+
+
+def case_fold(string: str) -> str:
+    """Converts the string to lowercase"""
+    return string.lower()
+
+
+def remove_stopwords(string: str) -> str:
+    """Removes the stopwords from the string using NLTK's stopwords"""
+    stop_words = set(stopwords.words('english'))
+    return SPACE.join([word for word in string.split() if word not in stop_words])
+
+
+def remove_punctuation(string: str) -> str:
+    """Removes the punctuation from the string"""
+    return EMPTY.join([char for char in string if char.isalnum() or char.isspace()])
+
+
+def expand_contractions(string: str) -> str:
+    """Expands the contractions in the string"""
+    return string.replace("'", SPACE)
+
+
+def stem_string(tokens: list) -> list:
+    """Stems the tokens using Porter Stemmer"""
+    stemmer = PorterStemmer()
+    return [stemmer.stem(word) for word in tokens]
+
+
+def lemmatize(tokens: list) -> list:
+    """Lemmatizes the tokens using WordNet Lemmatizer"""
+    lemmatizer = WordNetLemmatizer()
+    return [lemmatizer.lemmatize(word) for word in tokens]
+
+
+def tokenize(string: str) -> list:
+    """Tokenizes the string"""
+    return word_tokenize(string)
+
+
+def preprocess(string: str) -> list:
+    """Preprocesses the string using the following steps:
+    1. Case Folding
+    2. Expanding Contractions
+    3. Removing Punctuation
+    4. Removing Stopwords
+    5. Tokenization
+    6. Stemming
+    7. Lemmatization
+    """
+    string = case_fold(string)
+    string = expand_contractions(string)
+    string = remove_punctuation(string)
+    string = remove_stopwords(string)
+    tokens = tokenize(string)
+    tokens = stem_string(tokens)
+    tokens = lemmatize(tokens)
+    return tokens
+
+
+# Document Processing Functions
+def read_document_as_tokens(file: str) -> list:
+    """Reads the document from the file and returns it as a string"""
+    with open(file, READ, encoding=UTF_8) as f:
+        return preprocess(f.read())
+
+
+def read_document_in_directory(directory: str) -> dict:
+    """Reads the documents in the directory and returns them as a dictionary"""
+    documents = {}
+    for file in os.listdir(directory):
+        if file.endswith('.txt'):
+            file_path = os.path.join(directory, file)
+            documents[file] = read_document_as_tokens(file_path)
+    return documents
