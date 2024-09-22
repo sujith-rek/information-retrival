@@ -1,37 +1,10 @@
-# n this assignment, you will be implementing ranked retrieval using vector space model. To
-# implement the VSM, you may choose to implement your dictionary and postings lists in the
-# following format. The only difference between this format and that in the textbook, is that
-# you encode term frequencies in the postings for the purpose of computing tf×idf. The tuple in
-# each posting represents (doc ID, term freq).
-# Term doc freq (df) → postings lists
-# Ambitious 5 → (1, 5)→ (7,2) → (21, 7) → ...
-# ... ... ...
-# In addition to the standard dictionary and postings file, you will need to store information at
-# indexing time about the document length, in order to do document normalization. In the
-# textbook this is referred to as Length[N]. You may store this information with the postings,
-# dictionary or as a separate file.
-# In the searching step, you will need to rank documents by cosine similarity based on tf×idf. In
-# terms of SMART notation of ddd.qqq, you will need to implement the lnc.ltc ranking scheme
-# (i.e., log tf and idf with cosine normalization for queries documents, and log tf, cosine
-# normalization but no idf for documents. Compute cosine similarity between the query and each
-# document, with the weights follow the tf×idf calculation, where term freq = 1 + log(tf) and
-# inverse document frequency idf = log(N/df) (for queries). That is,
-# tf-idf = (1 + log(tf)) * log(N/df).
-# It's suggested that you use log base 10 for your logarithm calculations. The queries we provide
-# are now free text queries, i.e., you don't need to use query operators like AND, OR, NOT and
-# parentheses, and there will be no phrasal queries. These free text queries are similar to those
-# you type in a web search engine's search bar.
-# Your searcher should output a list of up to 10 most relevant (less if there are fewer than ten
-# documents that have matching stems to the query) docIDs in response to the query. These
-# documents need to be ordered by relevance, with the first document being most relevant. For
-# those with marked with the same relevance, further sort them by the increasing order of the
-# docIDs.
-
 import os
+import math
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 
+# Constants
 SPACE = ' '
 EMPTY = ''
 READ = 'r'
@@ -40,46 +13,48 @@ CORPUS = 'corpus/'
 INDEX_FILE = 'index.txt'
 
 
+# Preprocessing Functions
 def case_fold(string: str) -> str:
-    """Converts the string to lowercase"""
+    """Converts the string to lowercase."""
     return string.lower()
 
 
 def remove_stopwords(string: str) -> str:
-    """Removes the stopwords from the string using NLTK's stopwords"""
+    """Removes stopwords using NLTK's stopwords."""
     stop_words = set(stopwords.words('english'))
     return SPACE.join([word for word in string.split() if word not in stop_words])
 
 
 def remove_punctuation(string: str) -> str:
-    """Removes the punctuation from the string"""
+    """Removes punctuation from the string."""
     return EMPTY.join([char for char in string if char.isalnum() or char.isspace()])
 
 
 def expand_contractions(string: str) -> str:
-    """Expands the contractions in the string"""
+    """Expands contractions in the string."""
     return string.replace("'", SPACE)
 
 
 def stem_string(tokens: list) -> list:
-    """Stems the tokens using Porter Stemmer"""
+    """Applies Porter Stemmer to the tokens."""
     stemmer = PorterStemmer()
     return [stemmer.stem(word) for word in tokens]
 
 
 def lemmatize(tokens: list) -> list:
-    """Lemmatizes the tokens using WordNet Lemmatizer"""
+    """Lemmatizes the tokens using WordNet Lemmatizer."""
     lemmatizer = WordNetLemmatizer()
     return [lemmatizer.lemmatize(word) for word in tokens]
 
 
 def tokenize(string: str) -> list:
-    """Tokenizes the string"""
+    """Tokenizes the string."""
     return word_tokenize(string)
 
 
 def preprocess(string: str) -> list:
-    """Preprocesses the string using the following steps:
+    """
+    Preprocesses the string by performing:
     1. Case Folding
     2. Expanding Contractions
     3. Removing Punctuation
@@ -100,13 +75,13 @@ def preprocess(string: str) -> list:
 
 # Document Processing Functions
 def read_document_as_tokens(file: str) -> list:
-    """Reads the document from the file and returns it as a string"""
+    """Reads a document and returns the tokens after preprocessing."""
     with open(file, READ, encoding=UTF_8) as f:
         return preprocess(f.read())
 
 
-def read_document_in_directory(directory: str):
-    """Reads the documents in the directory and returns them as a dictionary"""
+def read_documents(directory: str) -> tuple:
+    """Reads all documents from the directory, returns their contents and IDs."""
     documents = {}
     doc_ids = {}
     i = 0
@@ -119,38 +94,107 @@ def read_document_in_directory(directory: str):
     return documents, doc_ids
 
 
-def create_index_with_tf_df():
-    """Creates the inverted index from the documents"""
-    documents, d_ids = read_document_in_directory(CORPUS)
+# Inverted Index and Document Length Calculation
+def create_index_with_tf_df_and_lengths() -> tuple:
+    """Creates an inverted index with term frequencies and document lengths."""
+    documents, doc_ids = read_documents(CORPUS)
     inverted_index = {}
+    doc_lengths = {}
+
     for doc_id, document in documents.items():
+        term_freqs = {}
+        # Calculate term frequencies
         for term in document:
+            term_freqs[term] = term_freqs.get(term, 0) + 1
+
+        # Populate the inverted index with tf information
+        for term, freq in term_freqs.items():
             if term not in inverted_index:
-                inverted_index[term] = {doc_id: 1}
-            elif doc_id not in inverted_index[term]:
-                inverted_index[term][doc_id] = 1
-            else:
-                inverted_index[term][doc_id] += 1
+                inverted_index[term] = {}
+            inverted_index[term][doc_id] = calculate_tf(freq)
 
-    # Create the new dictionary with keys as tuples (term, df)
-    new_index = {}
-    for term, doc_dict in inverted_index.items():
-        df = len(doc_dict)
-        new_index[(term, df)] = doc_dict
+        # Calculate document length for normalization
+        doc_lengths[doc_id] = calculate_document_length(term_freqs)
 
-    return new_index, d_ids
+    return inverted_index, doc_ids, doc_lengths
 
 
-def write_index_to_file(index: dict, file: str):
-    """Writes the index to the file"""
-    index_file = open(file, 'w', encoding='utf-8')
-    index_file.write(str(index))
-    index_file.close()
+def calculate_tf(term_freq) -> float:
+    """Calculates term frequency using logarithmic weighting."""
+    return 1 + math.log10(term_freq) if term_freq > 0 else 0
 
 
-def reconstruct_index_from_file(file: str) -> dict:
-    """Reconstructs the bi-word index from the file"""
-    index_file = open(file, 'r', encoding='utf-8')
-    index = eval(index_file.read())
-    index_file.close()
-    return index
+def calculate_idf(total_docs, doc_freq) -> float:
+    """Calculates inverse document frequency."""
+    return math.log10(total_docs / doc_freq) if doc_freq > 0 else 0
+
+
+def calculate_document_length(doc_vector) -> float:
+    """Calculates the length of a document vector for normalization."""
+    return math.sqrt(sum(weight ** 2 for weight in doc_vector.values()))
+
+
+def calculate_cosine_similarity(query_vector, doc_vector, doc_length) -> float:
+    """Calculates cosine similarity between query and document vectors."""
+    dot_product = sum(query_vector[term] * doc_vector.get(term, 0) for term in query_vector)
+    if doc_length == 0:
+        return 0
+    return dot_product / doc_length
+
+
+# Query Processing and Ranked Retrieval
+def process_query(query, index, doc_lengths, total_docs) -> list:
+    """Processes the query and computes ranked retrieval using cosine similarity."""
+    query_tokens = preprocess(query)
+
+    # Create query vector with tf-idf weighting
+    query_vector = {}
+    for term in query_tokens:
+        if term in index:
+            df = len(index[term])  # Document frequency
+            tf = query_tokens.count(term)  # Term frequency in query
+            query_vector[term] = calculate_tf(tf) * calculate_idf(total_docs, df)
+
+    # Normalize the query vector
+    query_length = calculate_document_length(query_vector)
+    if query_length > 0:
+        query_vector = {term: weight / query_length for term, weight in query_vector.items()}
+
+    # Compute cosine similarity scores for all documents
+    scores = {}
+    for term in query_vector:
+        if term in index:
+            for doc_id, tf_weight in index[term].items():
+                if doc_id not in scores:
+                    scores[doc_id] = 0
+                scores[doc_id] += query_vector[term] * tf_weight
+
+    # Normalize by document lengths and rank
+    ranked_docs = [(doc_id, score / doc_lengths[doc_id]) for doc_id, score in scores.items() if doc_lengths[doc_id] > 0]
+    ranked_docs.sort(key=lambda x: (-x[1], x[0]))  # Sort by score (desc) and then by doc_id (asc)
+
+    return ranked_docs[:10]  # Return top 10 relevant documents
+
+
+# Main Search Function
+def search(query) -> None:
+    """Main search function to process the query and display ranked results."""
+    index, doc_ids, doc_lengths = create_index_with_tf_df_and_lengths()
+    total_docs = len(doc_ids)
+
+    ranked_results = process_query(query, index, doc_lengths, total_docs)
+
+    print("Top 10 relevant documents for your query:")
+    for doc_id, score in ranked_results:
+        print(f"Document ID: {doc_ids[doc_id]}, Score: {score}")
+
+
+def main() -> None:
+    """Entry point for the search functionality."""
+    query = input("Enter your query: ")
+    search(query)
+
+
+# Run the main function
+if __name__ == "__main__":
+    main()
