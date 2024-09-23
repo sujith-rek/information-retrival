@@ -22,7 +22,7 @@ def case_fold(string: str) -> str:
 def remove_stopwords(string: str) -> str:
     """Removes stopwords using NLTK's stopwords."""
     stop_words = set(stopwords.words('english'))
-    return SPACE.join([word for word in string.split() if word not in stop_words])
+    return SPACE.join([word for word in word_tokenize(string) if word not in stop_words])
 
 
 def remove_punctuation(string: str) -> str:
@@ -35,13 +35,13 @@ def expand_contractions(string: str) -> str:
     return string.replace("'", SPACE)
 
 
-def stem_string(tokens: list) -> list:
+def stem_tokens(tokens: list) -> list:
     """Applies Porter Stemmer to the tokens."""
     stemmer = PorterStemmer()
     return [stemmer.stem(word) for word in tokens]
 
 
-def lemmatize(tokens: list) -> list:
+def lemmatize_tokens(tokens: list) -> list:
     """Lemmatizes the tokens using WordNet Lemmatizer."""
     lemmatizer = WordNetLemmatizer()
     return [lemmatizer.lemmatize(word) for word in tokens]
@@ -60,16 +60,16 @@ def preprocess(string: str) -> list:
     3. Removing Punctuation
     4. Removing Stopwords
     5. Tokenization
-    6. Stemming
-    7. Lemmatization
+    6. Lemmatization
+    7. Stemming
     """
     string = case_fold(string)
     string = expand_contractions(string)
     string = remove_punctuation(string)
-    string = remove_stopwords(string)
+    # string = remove_stopwords(string)
     tokens = tokenize(string)
-    tokens = stem_string(tokens)
-    tokens = lemmatize(tokens)
+    # tokens = lemmatize_tokens(tokens)
+    # tokens = stem_tokens(tokens)
     return tokens
 
 
@@ -84,13 +84,12 @@ def read_documents(directory: str) -> tuple:
     """Reads all documents from the directory, returns their contents and IDs."""
     documents = {}
     doc_ids = {}
-    i = 0
-    for file in os.listdir(directory):
+
+    for i, file in enumerate(os.listdir(directory)):
         if file.endswith('.txt'):
             doc_ids[i] = file
             file_path = os.path.join(directory, file)
             documents[i] = read_document_as_tokens(file_path)
-            i += 1
     return documents, doc_ids
 
 
@@ -137,9 +136,7 @@ def calculate_document_length(doc_vector) -> float:
 def calculate_cosine_similarity(query_vector, doc_vector, doc_length) -> float:
     """Calculates cosine similarity between query and document vectors."""
     dot_product = sum(query_vector[term] * doc_vector.get(term, 0) for term in query_vector)
-    if doc_length == 0:
-        return 0
-    return dot_product / doc_length
+    return dot_product / doc_length if doc_length > 0 else 0
 
 
 # Query Processing and Ranked Retrieval
@@ -151,8 +148,8 @@ def process_query(query, index, doc_lengths, total_docs) -> list:
     query_vector = {}
     for term in query_tokens:
         if term in index:
-            df = len(index[term])  # Document frequency
-            tf = query_tokens.count(term)  # Term frequency in query
+            df = len(index[term])
+            tf = query_tokens.count(term)
             query_vector[term] = calculate_tf(tf) * calculate_idf(total_docs, df)
 
     # Normalize the query vector
@@ -165,13 +162,11 @@ def process_query(query, index, doc_lengths, total_docs) -> list:
     for term in query_vector:
         if term in index:
             for doc_id, tf_weight in index[term].items():
-                if doc_id not in scores:
-                    scores[doc_id] = 0
-                scores[doc_id] += query_vector[term] * tf_weight
+                scores[doc_id] = scores.get(doc_id, 0) + query_vector[term] * tf_weight
 
     # Normalize by document lengths and rank
     ranked_docs = [(doc_id, score / doc_lengths[doc_id]) for doc_id, score in scores.items() if doc_lengths[doc_id] > 0]
-    ranked_docs.sort(key=lambda x: (-x[1], x[0]))  # Sort by score (desc) and then by doc_id (asc)
+    ranked_docs.sort(key=lambda x: (-x[1], x[0]))
 
     return ranked_docs[:10]  # Return top 10 relevant documents
 
